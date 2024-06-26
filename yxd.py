@@ -372,6 +372,7 @@ def main():
     if args.xxFormat:
         hexStyle = "xx"
     if args.psFormat:
+        args.autoSkip = False
         hexStyle = "ps"
 
     bufferSize  = args.bufferSize  if args.bufferSize else 0
