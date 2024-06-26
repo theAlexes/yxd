@@ -19,7 +19,7 @@ parser.add_argument('--sc', help='Create a C shellcode loader from buffer', dest
 parser.add_argument('--style', help='Show Current Hex Style', dest='dumpStyle', action="store_true")
 parser.add_argument('-v', help='Print Version Info', dest='printVersion', action="store_true")
 
-versionInfo="yxd - Yuu's heX Dumper Version 20230831.0"""
+versionInfo="yxd - Yuu's heX Dumper Version 20230831.0"
 
 def styleDump():
     """
@@ -76,7 +76,7 @@ def dump(inBytes,baseAddr=0,dataLen=0,blockSize=16,outFormat="xxd",quiet=False,a
     """
     dataLen = len(inBytes) if ( dataLen == 0 ) or ( dataLen > len(inBytes) ) else dataLen # Sanity check
     offs = 0
-    hexDumpOut = "" 
+    hexDumpOut = ""
     # Style
     dumpBytez = yc.bytez
     dumpOffstyle = yc.OFFSTYLE
