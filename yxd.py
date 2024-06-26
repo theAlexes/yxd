@@ -7,6 +7,7 @@ import yxdconfig as yc
 parser = argparse.ArgumentParser(description="yxd - Yuu's heX Dumper")
 parser.add_argument('-f', help='File to open', dest='inFile')
 parser.add_argument('input', help='File to open', nargs='?')
+parser.add_argument('-a', help='Autoskip mode',  dest='autoSkip', action="store_true")
 parser.add_argument('-o', help='Offset to start within file', dest='startOffset', type=lambda x: int(x,0) )
 parser.add_argument('-s', help='Size of buffer to dump', dest='bufferSize', type=lambda x: int(x,0) )
 parser.add_argument('-r', help='Do a reverse hex dump',  dest='reverseDump', action="store_true")
@@ -45,7 +46,7 @@ def makeDumpLine(outFormat, hexOut, offsetOut, bAsc):
     else:
         return f"{offsetOut}{hexOut}{bAsc}\n"
 
-def dump(inBytes,baseAddr=0,dataLen=0,blockSize=16,outFormat="xxd",quiet=False):
+def dump(inBytes,baseAddr=0,dataLen=0,blockSize=16,outFormat="xxd",quiet=False,autoSkip=False):
     """
     Dump hex.
 
@@ -66,6 +67,8 @@ def dump(inBytes,baseAddr=0,dataLen=0,blockSize=16,outFormat="xxd",quiet=False):
         The format of hex dump format to do
     quiet : bool
         If true, don't print the output to the terminal
+    autoSkip : bool
+        If true, skip lines of nulls.
     Returns
     -------
     hexDumpOut : str
@@ -81,6 +84,8 @@ def dump(inBytes,baseAddr=0,dataLen=0,blockSize=16,outFormat="xxd",quiet=False):
     dumpSEP1 = yc.SEP1
     dumpSEP2 = yc.SEP2
     dumpEOA = yc.EOA
+    lastChunk = None
+    autoSkipped = lastChunkAllNulls = thisChunkAllNulls = False
     if ( outFormat == "xxd" ) or ( outFormat == "xx" ) or ( outFormat == "ps" ):
         dumpBytez = {}
         dumpOffstyle = ""
@@ -92,7 +97,13 @@ def dump(inBytes,baseAddr=0,dataLen=0,blockSize=16,outFormat="xxd",quiet=False):
         try:
             hb = []
             bAsc = ""
+            if autoSkip and lastChunk is not None and all(x == 0 for x in lastChunk):
+                lastChunkAllNulls = True
             bChunk = inBytes[offs:offs+blockSize]
+            if autoSkip and all(x == 0 for x in bChunk) and len(bChunk) == blockSize:
+                thisChunkAllNulls = True
+            else:
+                thisChunkAllNulls = False
             chunkBytes = 0
             for b in bChunk:
                 bFmt = f"{dumpBytez[b]}" if b in dumpBytez.keys() else ""
@@ -115,10 +126,19 @@ def dump(inBytes,baseAddr=0,dataLen=0,blockSize=16,outFormat="xxd",quiet=False):
             hexOut += f"{hb[12]}{hb[13]} "
             hexOut += f"{hb[14]}{hb[15]}{dumpSEP2}"
             line = makeDumpLine(outFormat, hexOut, offsetOut, bAsc)
-            if not quiet:
+            if not autoSkip and not quiet:
                 print(line, end="") # the line comes from makeDumpLine with a newline if it needs one
+            else:
+                if lastChunk is None or not thisChunkAllNulls:
+                    autoSkipped = False
+                    print(line, end="")
+                elif thisChunkAllNulls and lastChunkAllNulls:
+                    if not autoSkipped:
+                        print("*")
+                        autoSkipped = True
             hexDumpOut += line
             offs = offs + blockSize
+            lastChunk = bChunk
         except Exception as e:
             print(f"yxd.dump: {e}")
     if outFormat == "ps":
@@ -302,7 +322,7 @@ class yxd:
     reverseDump():
         do a reverse hex dump
     """
-    def __init__(self, binData, amount=0, baseAddr=0, outFormat="xxd", color="default", blockSize=16, offset=0,  quiet=False ):
+    def __init__(self, binData, amount=0, baseAddr=0, outFormat="xxd", color="default", blockSize=16, offset=0, quiet=False, autoSkip=False):
         self.binData = binData
         self.dataLen = len(binData)
         self.baseAddr = baseAddr
@@ -312,6 +332,7 @@ class yxd:
         self.blockSize = blockSize
         self.amount = amount
         self.quiet = quiet
+        self.autoSkip = autoSkip
         if quiet != True:
             self.dump()
     def styleDump(self):
@@ -323,7 +344,7 @@ class yxd:
                 else:
                     print()
     def dump(self):
-        return dump(self.binData,self.baseAddr,self.dataLen,self.blockSize,self.outFormat)
+        return dump(self.binData,self.baseAddr,self.dataLen,self.blockSize,self.outFormat,autoSkip=self.autoSkip)
     def genPythonScript(self):
         genPythonScript(self.binData)
     def genShellcode(self):
@@ -363,7 +384,7 @@ def main():
         binData = sys.stdin.buffer.read()
         binSize = len(binData)
 
-    yxdd = yxd(binData, baseAddr=startOffset, outFormat=hexStyle, quiet=True)
+    yxdd = yxd(binData, baseAddr=startOffset, outFormat=hexStyle, quiet=True, autoSkip=args.autoSkip)
     if args.genPythonScript:
         yxdd.genPythonScript()
     elif args.genShellcode:
