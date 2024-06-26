@@ -34,6 +34,17 @@ def styleDump():
             else:
                 print()
 
+def makeDumpLine(outFormat, hexOut, offsetOut, bAsc):
+    """
+    Produce an output line of the given format.
+    """
+    if outFormat == "xx":
+        return f"{hexOut}; {offsetOut}{bAsc}\n"
+    elif outFormat == "ps":
+        return "".join(hexOut.split())
+    else:
+        return f"{offsetOut}{hexOut}{bAsc}\n"
+
 def dump(inBytes,baseAddr=0,dataLen=0,blockSize=16,outFormat="xxd",quiet=False):
     """
     Dump hex.
@@ -103,18 +114,10 @@ def dump(inBytes,baseAddr=0,dataLen=0,blockSize=16,outFormat="xxd",quiet=False):
             hexOut += f"{hb[10]}{hb[11]} "
             hexOut += f"{hb[12]}{hb[13]} "
             hexOut += f"{hb[14]}{hb[15]}{dumpSEP2}"
-            if outFormat == "xx":
-                if quiet == False:
-                    print(f"{hexOut}; {offsetOut}{bAsc}")
-                hexDumpOut += f"{hexOut}; {offsetOut}{bAsc}\n"
-            elif outFormat == "ps":
-                if quiet == False:
-                    print("".join(hexOut.split()),end="")
-                hexDumpOut += "".join(hexOut.split())
-            else:
-                if quiet == False:
-                    print(f"{offsetOut}{hexOut}{bAsc}")
-                hexDumpOut += f"{offsetOut}{hexOut}{bAsc}\n"
+            line = makeDumpLine(outFormat, hexOut, offsetOut, bAsc)
+            if not quiet:
+                print(line, end="") # the line comes from makeDumpLine with a newline if it needs one
+            hexDumpOut += line
             offs = offs + blockSize
         except Exception as e:
             print(f"yxd.dump: {e}")
