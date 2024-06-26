@@ -99,6 +99,8 @@ def dump(inBytes,baseAddr=0,dataLen=0,blockSize=16,outFormat="xxd",quiet=False,a
             bAsc = ""
             if autoSkip and lastChunk is not None and all(x == 0 for x in lastChunk):
                 lastChunkAllNulls = True
+            else:
+                lastChunkAllNulls = False
             bChunk = inBytes[offs:offs+blockSize]
             if autoSkip and all(x == 0 for x in bChunk) and len(bChunk) == blockSize:
                 thisChunkAllNulls = True
@@ -128,14 +130,16 @@ def dump(inBytes,baseAddr=0,dataLen=0,blockSize=16,outFormat="xxd",quiet=False,a
             line = makeDumpLine(outFormat, hexOut, offsetOut, bAsc)
             if not autoSkip and not quiet:
                 print(line, end="") # the line comes from makeDumpLine with a newline if it needs one
-            else:
-                if lastChunk is None or not thisChunkAllNulls:
-                    autoSkipped = False
+            elif not quiet:
+                if lastChunk is None:
                     print(line, end="")
-                elif thisChunkAllNulls and lastChunkAllNulls:
+                elif lastChunkAllNulls and thisChunkAllNulls:
                     if not autoSkipped:
                         print("*")
-                        autoSkipped = True
+                    autoSkipped = True
+                else:
+                    autoSkipped = False
+                    print(line, end="")
             hexDumpOut += line
             offs = offs + blockSize
             lastChunk = bChunk
